@@ -1,0 +1,70 @@
+{
+  "snapshot_at": "2026-09-14T09:00:00+07:00",
+  "tickets": [
+    {
+      "ticket_id": "INC-1042",
+      "summary": "VPN authentication failures for Windows clients",
+      "priority": "high",
+      "status": "in_progress",
+      "asset_id": null,
+      "assigned_to": "Network Team",
+      "created_at": "2026-09-14T07:40:00+07:00",
+      "updated_at": "2026-09-14T08:50:00+07:00",
+      "resolved_at": null,
+      "related_service": "vpn",
+      "notes": "Intermittent AUTH_TIMEOUT on production VPN. Workaround: sync device clock and retry."
+    },
+    {
+      "ticket_id": "INC-1045",
+      "summary": "Wi-Fi access points on floor 4 unavailable",
+      "priority": "high",
+      "status": "in_progress",
+      "asset_id": null,
+      "assigned_to": "Infrastructure Team",
+      "created_at": "2026-09-14T08:15:00+07:00",
+      "updated_at": "2026-09-14T08:55:00+07:00",
+      "resolved_at": null,
+      "related_service": "wifi",
+      "notes": "All APs on Bangkok floor 4 are offline. Wired fallback available."
+    },
+    {
+      "ticket_id": "INC-1038",
+      "summary": "Disk SMART warning on DT-031",
+      "priority": "medium",
+      "status": "resolved",
+      "asset_id": "DT-031",
+      "assigned_to": "Hardware Support",
+      "created_at": "2026-09-12T10:20:00+07:00",
+      "updated_at": "2026-09-13T14:00:00+07:00",
+      "resolved_at": "2026-09-13T14:00:00+07:00",
+      "related_service": null,
+      "notes": "Replaced failing SSD. SMART status now healthy."
+    },
+    {
+      "ticket_id": "INC-1035",
+      "summary": "Account locked for EMP-1003",
+      "priority": "medium",
+      "status": "closed",
+      "asset_id": null,
+      "assigned_to": "Identity Team",
+      "created_at": "2026-09-11T09:05:00+07:00",
+      "updated_at": "2026-09-11T11:30:00+07:00",
+      "resolved_at": "2026-09-11T11:30:00+07:00",
+      "related_service": "sso",
+      "notes": "Account unlocked after identity verification."
+    },
+    {
+      "ticket_id": "CHG-221",
+      "summary": "Planned email connector upgrade on staging",
+      "priority": "low",
+      "status": "open",
+      "asset_id": null,
+      "assigned_to": "Email Team",
+      "created_at": "2026-09-13T16:00:00+07:00",
+      "updated_at": "2026-09-14T08:40:00+07:00",
+      "resolved_at": null,
+      "related_service": "email",
+      "notes": "Scheduled maintenance window. Use production tenant for test messages."
+    }
+  ]
+}

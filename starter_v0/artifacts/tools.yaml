@@ -348,3 +348,11 @@ tools:
       ```
     owner: "TV2"
     related_tools: ["inspect_device"]
+
+  - name: check_ticket_status
+    description: "Tra cứu trạng thái của một ticket hỗ trợ đã tồn tại. Dùng khi user muốn biết tiến độ, trạng thái hoặc thông tin của ticket theo ticket ID (ví dụ INC-1042, CHG-221). Đây là tool read-only, không tạo ticket mới."
+    parameters:
+      type: object
+      properties:
+        ticket_id: {type: string, description: "Mã ticket cần tra cứu, ví dụ INC-1042 hoặc CHG-221. Phải do user cung cấp."}
+      required: [ticket_id]
