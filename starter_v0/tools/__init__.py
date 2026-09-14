@@ -14,6 +14,7 @@ from .lookup_user.tool import lookup_user
 from .policy.tool import search_company_policy
 from .search_kb.tool import search_kb
 from .search_device_info.tool import search_device_info
+from .check_ticket_status.tool import check_ticket_status
 
 
 # NOTE (starter_v0): these keys are the names the model sees AND the names
@@ -31,6 +32,7 @@ TOOL_FUNCTIONS = {
     "format_incident_report": format_incident_report,
     "policy": search_company_policy,
     "create_ticket": create_ticket,
+    "check_ticket_status": check_ticket_status,
 }
 
 
@@ -42,7 +44,7 @@ def to_openai_tools(declarations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     openai_tools = []
     for item in declarations:
         desc_parts = [item.get("description", "")]
-        
+
         if "when_to_use" in item:
             desc_parts.append("\nWHEN TO USE:\n- " + "\n- ".join(item["when_to_use"]))
         if "when_NOT_to_use" in item:
@@ -51,9 +53,9 @@ def to_openai_tools(declarations: list[dict[str, Any]]) -> list[dict[str, Any]]:
             desc_parts.append("\nBOUNDARIES:")
             for k, v in item["boundaries"].items():
                 desc_parts.append(f"- {k}: {v}")
-                
+
         full_desc = "\n".join(desc_parts).strip()
-        
+
         openai_tools.append({
             "type": "function",
             "function": {
