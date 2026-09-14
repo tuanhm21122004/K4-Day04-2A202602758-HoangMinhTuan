@@ -51,43 +51,43 @@ total_cases`, và tool result error đã được review thủ công.
 
 ## B2. Failure analysis
 
-### Baseline Summary
-- 30 cases, 21 PASS, 9 FAIL, accuracy 0.70
-- Failure split: wrong_tool 3 | missing_info 3 | wrong_boundary 3
-- Mismatch split: missing_tool_call 5 | extra_tool_call 2 | wrong_arg_value 2
-- Anomaly: tool_routing_accuracy 0.7667 vs wrong_tool=3 → flagged for review
+### Tóm tắt Baseline (Chạy lần đầu)
+- 30 cases, 21 PASS, 9 FAIL, độ chính xác (accuracy) 0.70
+- Phân loại lỗi: wrong_tool: 3 | missing_info: 3 | wrong_boundary: 3
+- Phân loại sai lệch (Mismatch): missing_tool_call: 5 | extra_tool_call: 2 | wrong_arg_value: 2
+- Điểm bất thường (Anomaly): tool_routing_accuracy là 0.7667 nhưng lại có đến 3 case wrong_tool → Đã đưa vào diện cần review kỹ.
 
-### Per-Case Table
+### Phân tích chi tiết từng Case
 
-| Case | Failure Type | Expected Tool(s) | Actual Tool Call(s) | Expected Args | Actual Args | Root Cause | Category |
-|---|---|---|---|---|---|---|---|
-| H04_user_routing | wrong_tool | `lookup_user` | `inspect_device` | `{"employee_id":"EMP-1003"}` | N/A | `lookup_user` schema didn't differentiate clearly from `inspect_device`. | DESCRIPTION_OVERLAP |
-| H10_missing_asset | missing_info | `clarify` | `inspect_device` | `{"response_type":"text"}` | `{"asset_id":"LT-204"}` (hallucinated) | `inspect_device` missed rules to block guessing and enforce `clarify`. | MISSING_WHEN_NOT_TO_USE |
-| H11_missing_employee | missing_info | `clarify` | `lookup_user` | `{"response_type":"text"}` | N/A | `lookup_user` didn't explicitly forbid guessing missing IDs. | MISSING_WHEN_NOT_TO_USE |
-| H12_confirm_before_ticket | wrong_boundary | `clarify` | `create_ticket` | `{"response_type":"yes_no"}` | `{"summary":...}` | `create_ticket` lacked explicit `confirm_required` boundary. | BOUNDARY_NOT_DECLARED |
-| H13_parallel_status_and_device | wrong_tool | `check_service_status`, `inspect_device` | `inspect_device` | Multiple | N/A | Schema lacked instructions that tools can be called in parallel. | DESCRIPTION_OVERLAP |
-| H17_triage_with_three_sources | wrong_tool | 3 tools | 1 tool | Multiple | N/A | Schema didn't support multi-source triage explicitly. | DESCRIPTION_OVERLAP |
-| H19_ambiguous_environment | missing_info | `clarify` | `check_service_status` | `{"response_type":"choice"}` | `{"environment":"production"}` | `environment` lacked strict `required` flag, defaulting to prod. | SCHEMA_MISSING_PARAM |
-| M05_ticket_confirmation | wrong_boundary | `clarify` | `create_ticket` | `{"response_type":"yes_no"}` | `{"priority":"high"}` | Agent didn't know it must stop at boundary after priority change. | BOUNDARY_NOT_DECLARED |
-| M09_confirmation_invalidated | wrong_boundary | `clarify` | `create_ticket` | `{"response_type":"yes_no"}` | `{"confirmed":true}` | `create_ticket` lacked rule to invalidate old confirmation on arg change. | BOUNDARY_NOT_DECLARED |
+| Case | Loại lỗi | Tool mong đợi | Tool thực tế gọi | Nguyên nhân gốc rễ (Root Cause) | Phân loại |
+|---|---|---|---|---|---|
+| H04_user_routing | wrong_tool | `lookup_user` | `inspect_device` | Mô tả của `lookup_user` không phân định rõ ranh giới với `inspect_device`. | TRÙNG LẶP MÔ TẢ |
+| H10_missing_asset | missing_info | `clarify` | `inspect_device` | Schema `inspect_device` thiếu rule cấm LLM tự bịa ID và ép dùng `clarify`. | THIẾU `when_NOT_to_use` |
+| H11_missing_employee| missing_info | `clarify` | `lookup_user` | Tương tự H10, `lookup_user` không cấm đoán ID nhân viên. | THIẾU `when_NOT_to_use` |
+| H12_confirm_before_ticket | wrong_boundary| `clarify` | `create_ticket` | `create_ticket` thiếu ranh giới `confirm_required` để chặn ghi đè. | THIẾU RANH GIỚI BẢO MẬT |
+| H13_parallel_status_and_device| wrong_tool | `check_service_status`, `inspect_device` | `inspect_device` | Thiếu hướng dẫn rằng các tool CÓ THỂ được gọi song song cùng lúc. | THIẾU HƯỚNG DẪN ĐỒNG THỜI |
+| H17_triage_with_three_sources | wrong_tool | Gọi 3 tools | Gọi 1 tool | Schema không hỗ trợ luồng Multi-source triage rõ ràng. | THIẾU HƯỚNG DẪN ĐỒNG THỜI |
+| H19_ambiguous_environment | missing_info | `clarify` | `check_service_status` | Biến `environment` không bắt buộc, tự default thành `production`. | LỖI THIẾU PARAM BẮT BUỘC |
+| M05_ticket_confirmation | wrong_boundary| `clarify` | `create_ticket` | Agent không biết phải dừng ở ranh giới xác nhận sau khi ưu tiên (priority) thay đổi. | THIẾU RANH GIỚI BẢO MẬT |
+| M09_confirmation_invalidated | wrong_boundary| `clarify` | `create_ticket` | `create_ticket` thiếu luật hủy xác nhận cũ khi payload bị thay đổi. | THIẾU RANH GIỚI BẢO MẬT |
 
-### Cluster A — wrong_tool (H04, H13, H17)
-- **Overlap Analysis:** `inspect_device` and `lookup_user` descriptions collided. H13 and H17 failed because the agent assumed one tool was enough.
-- **Patches:** Added `when_NOT_to_use` to `inspect_device` banning employee queries. Added `when_to_use` rules stating tools can be called IN PARALLEL for triage.
+### Cụm A — Lỗi Chọn Sai Tool (wrong_tool: H04, H13, H17)
+- **Phân tích:** `inspect_device` và `lookup_user` có sự chồng chéo chức năng. Với H13 và H17, Agent tự cho rằng chỉ cần gọi 1 tool là đủ giải quyết.
+- **Cách vá (Patch):** Thêm rule vào `when_NOT_to_use` của `inspect_device` cấm tuyệt đối việc tra cứu nhân viên. Thêm hướng dẫn `when_to_use` cho phép các tool được **GỌI SONG SONG (IN PARALLEL)** để chẩn đoán chéo.
 
-### Cluster B — missing_info (H10, H11, H19)
-- **Missing Requirements:** `check_service_status` relied on default `environment="production"` which failed on ambiguous inputs like "demo" (H19). `asset_id` and `employee_id` were loosely enforced.
-- **Patches:** Made `environment`, `asset_id`, and `employee_id` strictly `required` with RegEx patterns. Added explicit `when_NOT_to_use` explicitly banning LLM hallucination and forcing `clarify`.
+### Cụm B — Lỗi Thiếu Thông Tin (missing_info: H10, H11, H19)
+- **Phân tích:** `check_service_status` tự tiện gán `environment="production"` khiến case H19 (hỏi môi trường demo) bị sai. Ngoài ra, LLM tự bịa `asset_id` (H10).
+- **Cách vá (Patch):** Biến `environment`, `asset_id`, `employee_id` thành các tham số **BẮT BUỘC (required)** kèm chuỗi RegEx chặt chẽ. Cấm tuyệt đối hành vi tự suy diễn và ép LLM phải gọi `clarify` để hỏi lại user.
 
-### Cluster C — wrong_boundary (H12, M05, M09)
-- **Boundary Analysis:** `create_ticket` has write side-effects but lacked a `confirm_required` schema flag. This caused it to skip confirmation entirely or blindly reuse stale confirmations (M09).
-- **Patches:** Added `boundaries.confirm_required: true` and failure modes explicitly instructing the agent to call `clarify` if `priority` or `summary` changes.
+### Cụm C — Lỗi Vượt Rào Bảo Mật (wrong_boundary: H12, M05, M09)
+- **Phân tích:** `create_ticket` là hành động ghi (write side-effect) nhưng thiếu cờ `confirm_required`. Hậu quả là Agent tạo ticket mà không thèm hỏi (H12) hoặc xài lại lời đồng ý cũ dù nội dung ticket đã bị sửa (M05, M09).
+- **Cách vá (Patch):** Thêm cờ `boundaries.confirm_required: true`. Đặc biệt, đổi kiểu dữ liệu của `confirmed` thành `enum: [true]` và ra lệnh bắt buộc gọi `clarify` khi có thay đổi (priority/summary).
 
-### Cross-Team Handoffs
-- **TV1:** `system_prompt.md` needs an explicit "clarify before action" rule.
-- **TV3:** `eval_group.json` cases H13/H17 expected output may be ambiguous; consider checking `tool_routing_accuracy` formula anomaly.
-- **TV4:** Re-run `eval_adversarial.json` after these boundary patches.
-- **TV5:** For any new tool, I will provide the schema.
+### Đề xuất chuyển giao (Cross-Team Handoffs)
+- **Cho TV1 (Leader):** `system_prompt.md` cần bổ sung một rule "clarify before action" mạnh hơn ở cấp độ hệ thống.
+- **Cho TV3 (Benchmark):** File `eval_group.json` có thể chứa output kỳ vọng gây nhầm lẫn ở H13/H17; cần kiểm tra lại độ bất thường của metric `tool_routing_accuracy`.
+- **Cho TV4 (Security):** Cần chạy lại toàn bộ `eval_adversarial.json` vì schema hiện tại đã được bọc lót `boundaries` vô cùng kỹ lưỡng.
+- **Cho TV5 (UI/Bonus):** Bất kỳ tool nào mới được add thêm vào giao diện, hãy gửi cho TV2 để viết Schema chuẩn.
 ## B3. Team eval cases
 
 Liệt kê đúng 10 case tự viết: 5 single-turn và 5 multi-turn.
@@ -171,16 +171,16 @@ có thể đối chiếu đóng góp.
 
 Sao chép mẫu dưới đây cho từng thành viên:
 
-### Họ tên — MSSV
+### [Họ Tên Của Bạn] — [MSSV Của Bạn]
 
-- **Vai trò/phần việc được nhận:**
-- **Những gì tôi đã thay đổi trong repo chung:**
-- **File hoặc artifact liên quan:**
-- **Commit hash hoặc pull request:**
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:**
-- **Khó khăn tôi gặp và cách tôi xử lý:**
-- **Điều tôi học được từ phần việc này:**
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:**
+- **Vai trò/phần việc được nhận:** TV2 (Tool Declaration & Schema Engineer). Phụ trách thiết kế và rà soát file `artifacts/tools.yaml`, phân tích lỗi Baseline (B2) và Technical Reflection (B7).
+- **Những gì tôi đã thay đổi trong repo chung:** Cập nhật cấu trúc file `tools.yaml`, khóa chặt tham số bằng `enum` và `regex` (ví dụ: `environment`, `asset_id`). Bổ sung điều kiện cấm chỉ định ở `when_NOT_to_use` và cờ `boundaries.confirm_required` để chặn lỗi vượt rào (wrong_boundary). Nâng điểm số từ 21/30 lên 30/30 (100% Pass) qua 5 lần lặp.
+- **File hoặc artifact liên quan:** `artifacts/tools.yaml`, `artifacts/REPORT.md` (mục B2, B7).
+- **Commit hash hoặc pull request:** [Điền mã commit của bạn]
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Ép tham số `confirmed` của `create_ticket` thành kiểu `enum: [true]` thay vì `boolean` thông thường và ghi cấm gọi tool trực tiếp ở lượt đầu. Lý do: Để triệt tiêu hành vi ảo giác (hallucinate) `confirmed=false` của LLM, ép nó phải gọi `clarify`.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Khó khăn là LLM không hiểu ngữ cảnh "chưa xác nhận". Tôi khắc phục bằng cách kết hợp văn phong mệnh lệnh cực gắt trong description ("TUYỆT ĐỐI KHÔNG GỌI") và sử dụng JSON Schema Validator để đánh sập mọi tool call sai luật.
+- **Điều tôi học được từ phần việc này:** Prompt rất dễ bị lách luật, nhưng JSON Schema thì mang tính tuyệt đối. "Schema is Law" - thiết kế ranh giới ở tầng code là chốt chặn bảo mật đáng tin cậy nhất.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Chuẩn hóa các trường ranh giới bảo mật thành các Object kế thừa được thay vì viết rule thủ công từng tool.
 
 Mỗi thành viên phải tự commit phần self-reflection của mình bằng Git identity
 tương ứng. Reflection phải dẫn đến contribution artifact/commit đã nêu ở trên,
