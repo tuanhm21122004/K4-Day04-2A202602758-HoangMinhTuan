@@ -103,9 +103,15 @@ Liệt kê đúng 10 case tự viết: 5 single-turn và 5 multi-turn.
 
 ## B4. Live chat evidence
 
+Bảng dưới đây ghi nhận các lượt tương tác hội thoại thực tế (live chat) qua giao diện Streamlit UI và luồng `run_model_tool_loop`, được trích xuất từ các file live transcript trong thư mục `transcripts/`:
+
 | Scenario/turn | Version | Tool calls + args | Transcript/run | Outcome |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| **Tra cứu trạng thái VPN Production** (Turn 1) | `v0` | `check_service_status(service="vpn", environment="production")` | `transcripts/v0_openrouter_20260914T191208821549.transcript.json` | **PASS (answered)**: Trả về trạng thái `degraded` của VPN production, phát hiện sự cố `INC-1042` và cung cấp hướng xử lý tạm thời (đồng bộ giờ thiết bị). |
+| **Xử lý truy vấn mơ hồ / thiếu thông tin** (Turn 2) | `v0` | Không gọi tool bừa bãi | `transcripts/v0_openrouter_20260914T191208821549.transcript.json` | **PASS (answered)**: Khi nhận input gõ dở/mơ hồ ("Tra c"), Agent không tự bịa thông tin mà phản hồi yêu cầu người dùng mô tả cụ thể nội dung cần tra cứu. |
+| **Tra cứu tiến độ ticket qua Bonus Tool** (Turn 3) | `v0` | `check_ticket_status(ticket_id="INC-1042")` | `transcripts/v0_openrouter_20260914T191208821549.transcript.json` | **PASS (answered)**: Agent nhận diện đúng ý định tra cứu ticket, gọi bonus tool `check_ticket_status`, trả về đầy đủ status `in_progress`, priority `high` và nhóm `Network Team`. |
+| **Kiểm thử Quick Action Chip & Fallback Evidence** (Turn 1) | `v0` | `check_ticket_status(ticket_id="INC-1042")` | `transcripts/v0_openrouter_20260914T194959233843.transcript.json` | **PASS (answered)**: Kích hoạt từ nút 1 chạm trên Web UI, tool thực thi thành công; UI định dạng markdown phân dòng rõ ràng và kích hoạt Regex Fallback hiển thị đúng `📌 Evidence: INC-1042`. |
+
 
 ## B4a. Adversarial evidence
 
