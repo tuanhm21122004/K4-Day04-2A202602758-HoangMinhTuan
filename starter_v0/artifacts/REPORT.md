@@ -44,10 +44,12 @@ total_cases`, và tool result error đã được review thủ công.
 
 | Version | Prompt/tool change | Hypothesis | Metric | Before | After | Run file |
 |---|---|---|---|---:|---:|---|
-| v0 | Giữ nguyên artifact khởi đầu; chưa sửa prompt/schema | Thiết lập mốc đo hợp lệ trước khi tối ưu | Độ chính xác case | — | 70.0% (21/30; provider errors: 0) | `runs/v0_B_base_openrouter_20260914T182501927883.json` |
-| v1 |  |  |  |  |  |  |
-| v2 |  |  |  |  |  |  |
-| v3 |  |  |  |  |  |  |
+| v0 | Giữ nguyên artifact khởi đầu; chưa sửa prompt/schema | Thiết lập mốc đo hợp lệ trước khi tối ưu | Độ chính xác case | — | 70.0% (21/30; provider errors: 0) | `evidence/runs/v0_B_base_openrouter_20260914T182501927883.json` |
+| v1 | Artifact tools hash `dbc0800d05e2` | Cải thiện routing/clarify ban đầu sẽ tăng accuracy so với baseline | Độ chính xác case | 70.0% | 73.33% (22/30; provider errors: 0) | `evidence/runs/v1_B_base_openrouter_20260914T190944406906.json` |
+| v2 | Artifact tools hash `687156d15870` | Làm rõ contract arguments và boundaries sẽ giảm thêm lỗi còn lại | Độ chính xác case | 73.33% | 86.67% (26/30; provider errors: 0) | `evidence/runs/v2_B_base_openrouter_20260914T191503185799.json` |
+| v3 | Artifact tools hash `07aeb7c0c02e` | Tinh chỉnh routing và context sẽ loại bỏ phần lớn failure còn lại | Độ chính xác case | 86.67% | 96.67% (29/30; provider errors: 0) | `evidence/runs/v3_B_base_openrouter_20260914T191702791702.json` |
+| v4 | Artifact tools hash `7b5baa9e45d3` | Điều chỉnh tiếp theo cần giữ accuracy và kiểm tra regression | Độ chính xác case | 96.67% | 96.67% (29/30; provider errors: 0) | `evidence/runs/v4_B_base_openrouter_20260914T191814378897.json` |
+| v5 | Artifact tools hash `66636aa44bd9` | Hoàn thiện boundary còn lại sẽ xử lý case FAIL cuối mà không tạo regression | Độ chính xác case | 96.67% | 100.0% (30/30; provider errors: 0) | `evidence/runs/v5_B_base_openrouter_20260914T192136109457.json` |
 
 ## B2. Failure analysis
 
@@ -69,44 +71,52 @@ total_cases`, và tool result error đã được review thủ công.
 | H17_triage_with_three_sources | Sai argument trong luồng nhiều tool | `inspect_device(LT-318, check=all)`, `check_service_status(vpn, production)`, `search_kb(query="VPN macOS", category=vpn)` | Agent gọi đủ ba nguồn cần thiết nhưng chọn phạm vi kiểm tra thiết bị quá rộng (`all`) thay vì diagnostic `vpn` được yêu cầu. | Quy định: khi user chỉ rõ domain chẩn đoán, truyền chính xác enum tương ứng; dùng `all` chỉ khi user yêu cầu kiểm tra tổng quát. |
 | H19_ambiguous_environment | Thiếu thông tin | `check_service_status(service=email, environment=staging)` | Người dùng không nói môi trường nhưng agent tự chọn `staging`; kỳ vọng là hỏi người dùng chọn `production` hay `staging`. | Khi environment làm thay đổi kết quả và chưa được nêu, gọi `clarify(response_type=choice, options=[production, staging])`; không tự chọn default trong tình huống mơ hồ. |
 
-### Per-Case Table
+### Nhóm A — sai/chọn thừa tool (H04, H13, H17)
 
-| Case | Failure Type | Expected Tool(s) | Actual Tool Call(s) | Expected Args | Actual Args | Root Cause | Category |
-|---|---|---|---|---|---|---|---|
-| H04_user_routing | wrong_tool | `lookup_user` | `inspect_device` | `{"employee_id":"EMP-1003"}` | N/A | `lookup_user` schema didn't differentiate clearly from `inspect_device`. | DESCRIPTION_OVERLAP |
-| H10_missing_asset | missing_info | `clarify` | `inspect_device` | `{"response_type":"text"}` | `{"asset_id":"LT-204"}` (hallucinated) | `inspect_device` missed rules to block guessing and enforce `clarify`. | MISSING_WHEN_NOT_TO_USE |
-| H11_missing_employee | missing_info | `clarify` | `lookup_user` | `{"response_type":"text"}` | N/A | `lookup_user` didn't explicitly forbid guessing missing IDs. | MISSING_WHEN_NOT_TO_USE |
-| H12_confirm_before_ticket | wrong_boundary | `clarify` | `create_ticket` | `{"response_type":"yes_no"}` | `{"summary":...}` | `create_ticket` lacked explicit `confirm_required` boundary. | BOUNDARY_NOT_DECLARED |
-| H13_parallel_status_and_device | wrong_tool | `check_service_status`, `inspect_device` | `inspect_device` | Multiple | N/A | Schema lacked instructions that tools can be called in parallel. | DESCRIPTION_OVERLAP |
-| H17_triage_with_three_sources | wrong_tool | 3 tools | 1 tool | Multiple | N/A | Schema didn't support multi-source triage explicitly. | DESCRIPTION_OVERLAP |
-| H19_ambiguous_environment | missing_info | `clarify` | `check_service_status` | `{"response_type":"choice"}` | `{"environment":"production"}` | `environment` lacked strict `required` flag, defaulting to prod. | SCHEMA_MISSING_PARAM |
-| M05_ticket_confirmation | wrong_boundary | `clarify` | `create_ticket` | `{"response_type":"yes_no"}` | `{"priority":"high"}` | Agent didn't know it must stop at boundary after priority change. | BOUNDARY_NOT_DECLARED |
-| M09_confirmation_invalidated | wrong_boundary | `clarify` | `create_ticket` | `{"response_type":"yes_no"}` | `{"confirmed":true}` | `create_ticket` lacked rule to invalidate old confirmation on arg change. | BOUNDARY_NOT_DECLARED |
+- **Nguyên nhân:** Mô tả của `inspect_device` và `lookup_user` chưa tách rõ phạm vi. Trong các luồng triage, agent cũng chưa nhận biết khi nào cần gọi nhiều tool song song.
+- **Thay đổi schema đề xuất:** Bổ sung điều kiện `when_not_to_use` cho `inspect_device` để cấm dùng employee ID; mô tả rõ các tình huống triage cần gọi song song nhiều tool.
 
-### Cluster A — wrong_tool (H04, H13, H17)
-- **Overlap Analysis:** `inspect_device` and `lookup_user` descriptions collided. H13 and H17 failed because the agent assumed one tool was enough.
-- **Patches:** Added `when_NOT_to_use` to `inspect_device` banning employee queries. Added `when_to_use` rules stating tools can be called IN PARALLEL for triage.
+### Nhóm B — thiếu thông tin (H10, H11, H19)
 
-### Cluster B — missing_info (H10, H11, H19)
-- **Missing Requirements:** `check_service_status` relied on default `environment="production"` which failed on ambiguous inputs like "demo" (H19). `asset_id` and `employee_id` were loosely enforced.
-- **Patches:** Made `environment`, `asset_id`, and `employee_id` strictly `required` with RegEx patterns. Added explicit `when_NOT_to_use` explicitly banning LLM hallucination and forcing `clarify`.
+- **Nguyên nhân:** `asset_id`, `employee_id` và environment còn cho phép suy đoán/default trong tình huống thông tin mơ hồ.
+- **Thay đổi schema đề xuất:** Bắt buộc identifier/environment theo đúng contract, dùng pattern hợp lệ khi phù hợp và nêu rõ: nếu thiếu dữ liệu phải gọi `clarify`, không tự tạo identifier hay tự chọn môi trường.
 
-### Cluster C — wrong_boundary (H12, M05, M09)
-- **Boundary Analysis:** `create_ticket` has write side-effects but lacked a `confirm_required` schema flag. This caused it to skip confirmation entirely or blindly reuse stale confirmations (M09).
-- **Patches:** Added `boundaries.confirm_required: true` and failure modes explicitly instructing the agent to call `clarify` if `priority` or `summary` changes.
+### Nhóm C — ranh giới confirmation (H12, M05, M09)
 
-### Cross-Team Handoffs
-- **TV1:** `system_prompt.md` needs an explicit "clarify before action" rule.
-- **TV3:** `eval_group.json` cases H13/H17 expected output may be ambiguous; consider checking `tool_routing_accuracy` formula anomaly.
-- **TV4:** Re-run `eval_adversarial.json` after these boundary patches.
-- **TV5:** For any new tool, I will provide the schema.
+- **Nguyên nhân:** `create_ticket` là write action nhưng boundary confirmation chưa được mô tả đủ chặt, dẫn đến gọi tool trước xác nhận hoặc tái sử dụng confirmation cũ.
+- **Thay đổi schema đề xuất:** Khai báo `boundaries.confirm_required: true`; bất kỳ thay đổi nào ở summary, priority hoặc asset đều yêu cầu `clarify` để xác nhận payload mới.
+
+### Bàn giao giữa các thành viên
+
+- **TV 1:** G01 của Group Suite v5 vẫn tự chọn `environment=staging` khi user nói “pilot”. Bổ sung rule toàn cục: không tự suy luận environment ngoài enum; phải gọi `clarify(response_type=choice)` với `production` và `staging`.
+- **TV 2:** G03 gọi `policy` nhưng chọn `data_privacy` thay vì `external_tools`. Rà lại schema/mô tả của `policy`: câu hỏi về gửi dữ liệu sang công cụ bên thứ ba nên ưu tiên `external_tools`; nếu `data_privacy` cũng là cách phân loại hợp lệ, điều chỉnh expected behavior của G03 để không tạo false failure.
+- **TV 3:** Thiết kế `eval_group.json`, chạy regression từng version và kiểm tra anomaly giữa routing metric với failure trace.
+- **TV 4:** Chạy lại `eval_adversarial.json` sau khi schema boundary được cập nhật.
 ## B3. Team eval cases
 
 Liệt kê đúng 10 case tự viết: 5 single-turn và 5 multi-turn.
 
 | Case ID | What it tests | Expected behavior | Result |
 |---|---|---|---|
-|  |  |  |  |
+| G01_ambiguous_sso_environment | Environment mơ hồ: “pilot” | Gọi `clarify` với lựa chọn `production`/`staging`; không tự đoán environment | FAIL — gọi `check_service_status(sso, staging)` thay vì clarify. |
+| G02_department_is_not_employee_id | Phòng ban không phải employee ID | Gọi `clarify(response_type=text)` để hỏi employee ID | PASS |
+| G03_external_log_sharing_policy | Phân biệt policy với external search | Gọi `policy` trong phạm vi `external_tools`; không gửi log ra web | FAIL — gọi `policy` đúng nhưng chọn `data_privacy`, không phải `external_tools`. |
+| G04_non_helpdesk_request | Ranh giới phạm vi IT helpdesk | Từ chối yêu cầu marketing; không gọi tool | PASS |
+| G05_ticket_requires_confirmation | Ticket lần đầu chưa được xác nhận | Gọi `clarify(response_type=yes_no)` trước action | PASS |
+| G06_latest_asset_and_check_win | Correction asset + diagnostic scope | Dùng asset mới `LT-318` với `check=security` | PASS |
+| G07_cancelled_device_check | Cancellation ở lượt mới nhất | Không gọi tool của yêu cầu đã hủy | PASS |
+| G08_parallel_wifi_triage_after_correction | Correction + hai nguồn song song | Gọi `check_service_status(wifi, production)` và `inspect_device(LT-240, network)` | PASS |
+| G09_format_existing_findings_only | Format findings có sẵn, không refetch | Chỉ gọi `format_incident_report(template=technical)` | PASS |
+| G10_ticket_confirmation_stale_after_priority_change | Confirmation cũ hết hiệu lực | Gọi `clarify(response_type=yes_no)` cho payload mới | PASS |
+
+Kết quả Group Suite v5: **8/10 PASS (80.0%)**, `provider_error_cases = 0`,
+`measured_cases = total_cases = 10`, tool routing accuracy = 90.0%, argument
+accuracy = 80.0% và multiturn accuracy = 100.0%. Evidence:
+`evidence/runs/v5_B_group_openrouter_20260914T195702248588.json`.
+
+Hai failure được giữ làm regression backlog: G01 kiểm tra rule không đoán
+environment; G03 làm rõ ranh giới giữa `external_tools` và `data_privacy` khi
+câu hỏi đồng thời nhắc tới dữ liệu chẩn đoán và công cụ bên thứ ba.
 
 ## B4. Live chat evidence
 
@@ -145,13 +155,23 @@ nhóm tự xây.
 
 ## B7. Technical reflection
 
+### TV 2 — Tool Declaration & Schema Engineer
+
 Trong vai trò Tool Declaration & Schema Engineer, đợt baseline (30 cases, accuracy 0.70) đã cho tôi thấy rõ sự mong manh của việc phụ thuộc vào suy luận tự nhiên của LLM nếu không có schema chặt chẽ. Quyết định đầu tiên của tôi là loại bỏ sự lỏng lẻo của các kiểu `string` cơ bản. Ví dụ điển hình là H19: vì `environment` có default là `production`, LLM đã lười biếng bỏ qua việc hỏi lại người dùng khi gặp từ "demo". Tôi đã phải đánh đổi sự ngắn gọn của schema để thêm regex pattern `^(LT|DT)-[0-9]+$` và biến `environment` thành biến bắt buộc. Việc này ngay lập tức dập tắt các trường hợp missing_info (H10, H11) vì JSON Schema Validator sẽ chặn đứng LLM nếu nó cố bịa ID.
 
 Thứ hai, boundary decisions đóng vai trò sống còn. Việc `create_ticket` gây ra hàng loạt lỗi wrong_boundary (H12, M05, M09) là minh chứng cho việc Agent không tự hiểu thế nào là "stale confirmation". Một khi user đổi priority (M05), payload đã thay đổi, nhưng Agent vẫn đâm đầu tạo ticket. Tôi đã bổ sung `confirm_required: true` vào khối `boundaries` và explicitly cảnh báo trong `when_NOT_to_use`.
 
-Tuy nhiên, description overlap mới là rào cản đau đầu nhất. H04 fail vì `lookup_user` và `inspect_device` không có ranh giới rõ ràng. Bài học ở đây là `when_NOT_to_use` mang tính chất non-negotiable. Không chỉ bảo LLM *nên* làm gì, ta phải nói thẳng nó *tuyệt đối cấm* làm gì. Đối với v2 của tools.yaml, tôi dự định sẽ chuẩn hóa luôn khối `boundaries` thành một object độc lập để parser có thể mapping trực tiếp sang middleware bảo mật. 
+Tuy nhiên, description overlap mới là rào cản đau đầu nhất. H04 fail vì `lookup_user` và `inspect_device` không có ranh giới rõ ràng. Bài học ở đây là `when_NOT_to_use` mang tính chất non-negotiable. Không chỉ bảo LLM *nên* làm gì, ta phải nói thẳng nó *tuyệt đối cấm* làm gì. Ở vòng v1 của `tools.yaml`, tôi đã chuẩn hóa khối `boundaries` thành một object độc lập để parser có thể mapping trực tiếp sang middleware bảo mật.
 
 Cuối cùng, sự phối hợp là chìa khóa. Tôi không thể nhét mọi quy tắc vào tools. Tôi đã chuyển giao cho TV1 việc cập nhật `system_prompt.md` để dặn dò "clarify before action", nhắc TV4 chạy lại luồng adversarial vì schema mới đã bọc lót kỹ hơn, và báo TV3 kiểm tra lại metric anomaly (0.7667 routing accuracy vs 3 wrong_tool). Sự phân định rõ ràng giữa Tool Schema (TV2) và System Prompt (TV1) giúp hệ thống dễ debug và vững chãi hơn rất nhiều.
+
+### TV 3 — Benchmark & Team Eval Specialist
+
+Tôi phụ trách biến thay đổi prompt/schema thành evidence có thể kiểm tra lại. Với baseline v0, tôi xác nhận run hợp lệ vì cả 30/30 case được đo và `provider_error_cases` bằng 0. Kết quả 21/30 PASS (70%) cho thấy lỗi không tập trung ở một tool riêng lẻ mà trải trên ba cụm: chọn/gọi thừa tool, thiếu thông tin bắt buộc và ranh giới confirmation cho write action.
+
+Thay vì chỉ dựa vào case accuracy, tôi đọc từng trace FAIL để phân biệt đúng loại lỗi. Ví dụ, H04 gọi `lookup_user` đúng nhưng gọi thừa `inspect_device` với employee ID; H13 và H17 chọn đúng hướng triage nhưng không giữ đúng argument `check=vpn`; H10, H11 và H19 cho thấy agent suy đoán identifier/environment thay vì clarify. Các trace này trở thành tiêu chí thiết kế 10 group eval case và tiêu chí regression cho v1–v3.
+
+Sau mỗi version, tôi sẽ chỉ ghi metric khi run không có provider error, đối chiếu case PASS cũ để phát hiện regression và lưu đường dẫn JSON run làm evidence. Team eval sẽ bổ sung các tình huống thiếu thông tin, correction, cancellation, multi-tool và stale confirmation mà base suite chưa cô lập đầy đủ. Cách làm này giúp nhóm biết thay đổi nào thực sự cải thiện hành vi, thay vì chỉ thấy điểm tổng hợp thay đổi.
 
 # PHẦN C — Checkout trước khi nộp
 
@@ -197,6 +217,17 @@ Sao chép mẫu dưới đây cho từng thành viên:
 Mỗi thành viên phải tự commit phần self-reflection của mình bằng Git identity
 tương ứng. Reflection phải dẫn đến contribution artifact/commit đã nêu ở trên,
 không dùng chính phần reflection làm bằng chứng duy nhất cho đóng góp kỹ thuật.
+
+### Nguyễn Nam Khánh — 2A202602568
+
+- **Vai trò/phần việc được nhận:** TV 3 — Benchmark & Team Eval Specialist.
+- **Những gì tôi đã thay đổi trong repo chung:** Tôi xây dựng 10 group eval case gồm 5 single-turn và 5 multi-turn; phân tích toàn bộ 9 failure của baseline v0; tổng hợp metric Base Suite v0–v5 từ run JSON; cập nhật version log, B1, B2, B3 và đưa run evidence có thể commit vào `evidence/runs/`.
+- **File hoặc artifact liên quan:** `starter_v0/data/eval_group.json`, `starter_v0/artifacts/version_log.csv`, `starter_v0/artifacts/REPORT.md`, `starter_v0/evidence/runs/`.
+- **Commit hash hoặc pull request:** `[Điền commit hash hoặc URL pull request của bạn]`.
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Tôi chỉ dùng run có `provider_error_cases = 0` và `measured_cases = total_cases` làm evidence. Những file bị gắn nhãn version không khớp artifact hash được loại khỏi bảng version chính thức để tránh kết luận sai về mức cải thiện của agent.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Các run ban đầu có nhiều file `v1` nhưng khác tools hash, nên dễ nhầm version. Tôi đối chiếu timestamp, `artifact_version`, `tools_hash` và `summary` để chọn đúng chuỗi v1 → v5; đồng thời giữ lại failure trace thay vì chỉ nhìn case accuracy.
+- **Điều tôi học được từ phần việc này:** Metric tổng hợp chỉ có ý nghĩa khi đi kèm trace. Một version có thể đạt accuracy cao ở Base Suite nhưng vẫn fail case riêng của Team Eval, do đó cần chạy regression và review arguments/tool results thủ công.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Tôi sẽ yêu cầu mỗi thành viên lưu artifact snapshot và run JSON ngay khi tạo version để tên version, hash và evidence luôn khớp từ đầu; sau khi chốt v5, tôi cũng sẽ chạy lại Group Suite và ghi evidence version chính thức.
 
 ## C3. Final checkout
 

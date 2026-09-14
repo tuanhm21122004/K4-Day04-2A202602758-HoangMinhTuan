@@ -1,7 +1,116 @@
 {
   "dataset_id": "day04_v3_helpdesk_group",
   "dataset_role": "group",
-  "description": "Template intentionally left empty. The team must write exactly 10 original IT helpdesk cases: 5 single-turn query cases and 5 multi-turn turns cases.",
+  "description": "Ten original team-authored IT helpdesk cases: five single-turn cases (G01-G05) and five multi-turn cases (G06-G10).",
   "allowed_failure_types": ["wrong_tool", "wrong_arg_value", "wrong_boundary", "unnecessary_tool", "out_of_scope", "missing_info"],
-  "cases": []
+  "cases": [
+    {
+      "id": "G01_ambiguous_sso_environment",
+      "phase": "B",
+      "suite": "group",
+      "input": "SSO ở môi trường pilot có đang ổn không?",
+      "failure_type": "missing_info",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "choice", "options": ["production", "staging"]}}]},
+      "metadata": {"skill": "clarify_environment", "difficulty": "medium", "what_it_tests": "Không được suy đoán pilot là production hay staging."}
+    },
+    {
+      "id": "G02_department_is_not_employee_id",
+      "phase": "B",
+      "suite": "group",
+      "input": "Tra cứu tài khoản của một nhân viên thuộc bộ phận Finance giúp tôi.",
+      "failure_type": "missing_info",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "text"}}]},
+      "metadata": {"skill": "clarify_employee", "difficulty": "medium", "what_it_tests": "Tên phòng ban không phải employee ID hợp lệ."}
+    },
+    {
+      "id": "G03_external_log_sharing_policy",
+      "phase": "B",
+      "suite": "group",
+      "input": "Chính sách IT có cho phép gửi diagnostic log của máy ra công cụ web bên thứ ba không?",
+      "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "policy", "args": {"policy_area": "external_tools"}}]},
+      "metadata": {"skill": "policy_routing", "difficulty": "medium", "what_it_tests": "Câu hỏi về quy định phải đi vào policy, không được gọi external search."}
+    },
+    {
+      "id": "G04_non_helpdesk_request",
+      "phase": "B",
+      "suite": "group",
+      "input": "Hãy lập kế hoạch marketing cho sản phẩm mới của công ty.",
+      "failure_type": "out_of_scope",
+      "expect": {"no_tool": true},
+      "metadata": {"skill": "scope_boundary", "difficulty": "easy", "what_it_tests": "Yêu cầu ngoài IT helpdesk phải từ chối mà không gọi tool."}
+    },
+    {
+      "id": "G05_ticket_requires_confirmation",
+      "phase": "B",
+      "suite": "group",
+      "input": "Tạo ticket priority critical cho VPN bị lỗi trên LT-318.",
+      "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "yes_no"}}]},
+      "metadata": {"skill": "ticket_confirmation", "difficulty": "medium", "what_it_tests": "Yêu cầu tạo ticket lần đầu chưa phải confirmation cho payload cuối."}
+    },
+    {
+      "id": "G06_latest_asset_and_check_win",
+      "phase": "B",
+      "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Kiểm tra máy DT-031 vì có cảnh báo bảo mật."},
+        {"role": "user", "content": "Tôi đính chính, máy cần kiểm tra là LT-318."},
+        {"role": "user", "content": "Chỉ kiểm tra phần security trên máy mới."}
+      ],
+      "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "inspect_device", "args": {"asset_id": "LT-318", "check": "security"}}]},
+      "metadata": {"skill": "latest_context", "difficulty": "hard", "what_it_tests": "Lượt mới nhất phải thay thế asset cũ và xác định đúng check."}
+    },
+    {
+      "id": "G07_cancelled_device_check",
+      "phase": "B",
+      "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Kiểm tra Wi-Fi trên LT-240."},
+        {"role": "user", "content": "Dừng yêu cầu đó, tôi sẽ tự xử lý sau."}
+      ],
+      "failure_type": "unnecessary_tool",
+      "expect": {"no_tool": true},
+      "metadata": {"skill": "cancellation", "difficulty": "medium", "what_it_tests": "Ý định hủy ở lượt mới nhất không được kích hoạt tool của lượt trước."}
+    },
+    {
+      "id": "G08_parallel_wifi_triage_after_correction",
+      "phase": "B",
+      "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Wi-Fi trên DT-031 bị chập chờn."},
+        {"role": "user", "content": "Mã máy đúng là LT-240."},
+        {"role": "user", "content": "Kiểm tra cả Wi-Fi production và network của máy đúng giúp tôi."}
+      ],
+      "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "check_service_status", "args": {"service": "wifi", "environment": "production"}}, {"name": "inspect_device", "args": {"asset_id": "LT-240", "check": "network"}}]},
+      "metadata": {"skill": "parallel_correction", "difficulty": "hard", "what_it_tests": "Dùng asset đã đính chính và gọi đồng thời status + device inspection."}
+    },
+    {
+      "id": "G09_format_existing_findings_only",
+      "phase": "B",
+      "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Kết quả đã có: VPN production degraded; LT-318 có VPN client lỗi chứng chỉ."},
+        {"role": "user", "content": "Hãy tạo technical incident report từ đúng các findings này, không kiểm tra thêm."}
+      ],
+      "failure_type": "unnecessary_tool",
+      "expect": {"tool_calls": [{"name": "format_incident_report", "args": {"template": "technical"}}]},
+      "metadata": {"skill": "format_without_refetch", "difficulty": "hard", "what_it_tests": "Format từ findings có sẵn, không gọi status/device/KB lại."}
+    },
+    {
+      "id": "G10_ticket_confirmation_stale_after_priority_change",
+      "phase": "B",
+      "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Tôi xác nhận tạo ticket Wi-Fi LT-240 mức high."},
+        {"role": "user", "content": "Đổi priority thành critical và thêm nghi ngờ mất dữ liệu."},
+        {"role": "user", "content": "Hãy xác nhận lại payload mới trước khi tạo."}
+      ],
+      "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "yes_no"}}]},
+      "metadata": {"skill": "stale_confirmation", "difficulty": "hard", "what_it_tests": "Confirmation cũ hết hiệu lực khi priority và summary thay đổi."}
+    }
+  ]
 }
