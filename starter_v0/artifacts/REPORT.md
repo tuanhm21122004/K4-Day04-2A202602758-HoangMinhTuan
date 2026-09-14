@@ -20,9 +20,15 @@
 
 | Tool | Chức năng | Core / optional / team-built |
 |---|---|---|
-| clarify | Hỏi bổ sung hoặc xác nhận | core |
-|  |  |  |
-
+| `clarify` | Hỏi bổ sung hoặc xác nhận trước khi gọi action tool | core |
+| `search_kb` | Tra cứu hướng dẫn xử lý sự cố trong Knowledge Base | core |
+| `check_service_status` | Kiểm tra trạng thái một dịch vụ IT dùng chung | core |
+| `inspect_device` | Kiểm tra thông tin và log chẩn đoán của một thiết bị cụ thể | core |
+| `lookup_user` | Tra cứu thông tin nhân viên và thiết bị họ được cấp | core |
+| `format_incident_report` | Định dạng các kết quả chẩn đoán thành báo cáo | core |
+| `policy` | Tra cứu chính sách IT của công ty | optional built-in |
+| `create_ticket` | Tạo ticket hỗ trợ IT (yêu cầu xác nhận rõ ràng) | optional built-in |
+| `search_device_info` | Tra cứu thông tin thiết bị công khai trên web (Tavily) | external search |
 ## A3. Câu hỏi mẫu
 
 1.
@@ -171,16 +177,16 @@ có thể đối chiếu đóng góp.
 
 Sao chép mẫu dưới đây cho từng thành viên:
 
-### [Họ Tên Của Bạn] — [MSSV Của Bạn]
+### Trần Chí Vĩ — 2A202602968
 
 - **Vai trò/phần việc được nhận:** TV2 (Tool Declaration & Schema Engineer). Phụ trách thiết kế và rà soát file `artifacts/tools.yaml`, phân tích lỗi Baseline (B2) và Technical Reflection (B7).
-- **Những gì tôi đã thay đổi trong repo chung:** Cập nhật cấu trúc file `tools.yaml`, khóa chặt tham số bằng `enum` và `regex` (ví dụ: `environment`, `asset_id`). Bổ sung điều kiện cấm chỉ định ở `when_NOT_to_use` và cờ `boundaries.confirm_required` để chặn lỗi vượt rào (wrong_boundary). Nâng điểm số từ 21/30 lên 30/30 (100% Pass) qua 5 lần lặp.
+- **Những gì tôi đã thay đổi trong repo chung:** Cập nhật toàn bộ cấu trúc file `tools.yaml`, khóa chặt các tham số lỏng lẻo bằng `enum` và `regex` (ví dụ: ép `environment` chỉ nhận production/staging, `asset_id` phải khớp regex). Bổ sung điều kiện cấm chỉ định ở `when_NOT_to_use` và cờ `boundaries.confirm_required` để chặn các lỗi vượt rào (wrong_boundary, missing_info). Qua 5 lần lặp (v1-v5), bộ schema đã vá triệt để 9 lỗi của baseline, giúp hệ thống đạt 30/30 (100% Pass).
 - **File hoặc artifact liên quan:** `artifacts/tools.yaml`, `artifacts/REPORT.md` (mục B2, B7).
-- **Commit hash hoặc pull request:** [Điền mã commit của bạn]
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Ép tham số `confirmed` của `create_ticket` thành kiểu `enum: [true]` thay vì `boolean` thông thường và ghi cấm gọi tool trực tiếp ở lượt đầu. Lý do: Để triệt tiêu hành vi ảo giác (hallucinate) `confirmed=false` của LLM, ép nó phải gọi `clarify`.
-- **Khó khăn tôi gặp và cách tôi xử lý:** Khó khăn là LLM không hiểu ngữ cảnh "chưa xác nhận". Tôi khắc phục bằng cách kết hợp văn phong mệnh lệnh cực gắt trong description ("TUYỆT ĐỐI KHÔNG GỌI") và sử dụng JSON Schema Validator để đánh sập mọi tool call sai luật.
-- **Điều tôi học được từ phần việc này:** Prompt rất dễ bị lách luật, nhưng JSON Schema thì mang tính tuyệt đối. "Schema is Law" - thiết kế ranh giới ở tầng code là chốt chặn bảo mật đáng tin cậy nhất.
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Chuẩn hóa các trường ranh giới bảo mật thành các Object kế thừa được thay vì viết rule thủ công từng tool.
+- **Commit hash hoặc pull request:** [Điền mã commit của bạn trên GitHub vào đây]
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Tôi quyết định ép tham số `confirmed` trong tool `create_ticket` thành kiểu `enum: [true]` thay vì `boolean` thông thường, đồng thời ghi cấm gọi tool trực tiếp ở lượt đầu tiên. Lý do: Ở các case H12 và M09, LLM liên tục tự suy diễn (hallucinate) `confirmed=false` hoặc tự set thành `true` để lách luật tạo ticket. Việc khóa cứng bằng JSON Schema Validation ép LLM không còn đường lùi và buộc phải chuyển sang gọi `clarify`.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Khó khăn lớn nhất là giới hạn của LLM trong việc hiểu ngữ cảnh nhiều lượt (multiturn). Dù đã viết prompt, LLM vẫn phớt lờ. Tôi xử lý bằng cách kết hợp văn phong mệnh lệnh cực gắt trong mô tả tool (vd: "TUYỆT ĐỐI KHÔNG GỌI") và sử dụng bộ lọc schema Validator để từ chối các tool call sai luật.
+- **Điều tôi học được từ phần việc này:** Tôi nhận ra rằng Prompt (ngôn ngữ tự nhiên) rất dễ bị LLM lách luật hay ảo giác, nhưng JSON Schema Validation thì mang tính tuyệt đối. "Schema is Law" - thiết kế ranh giới schema chặt chẽ ở tầng code mới là chốt chặn bảo mật đáng tin cậy nhất cho AI Agent.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Tôi sẽ chuẩn hóa các trường ranh giới bảo mật (boundaries) thành các Object component kế thừa được, thay vì phải viết rule thủ công vào `when_NOT_to_use` cho từng tool riêng lẻ.
 
 Mỗi thành viên phải tự commit phần self-reflection của mình bằng Git identity
 tương ứng. Reflection phải dẫn đến contribution artifact/commit đã nêu ở trên,
