@@ -506,6 +506,12 @@ def render_assistant_content(text: str) -> None:
                     badges.append(f'<span class="meta-pill meta-intent">🎯 Intent: <b>{intent}</b></span>')
                 if action:
                     badges.append(f'<span class="meta-pill meta-action">⚡ Action: <b>{action}</b></span>')
+                # Fallback evidence extraction if model forgot to populate it
+                if not evidence:
+                    found_ev = re.findall(r"\b(?:INC|REQ|CHG|LT|DT)-\d+\b|\bPOL-[A-Z0-9_-]+\b", reply, flags=re.IGNORECASE)
+                    if found_ev:
+                        evidence = list(dict.fromkeys(found_ev))
+
                 if evidence:
                     ev_str = ", ".join(evidence) if isinstance(evidence, list) else str(evidence)
                     badges.append(f'<span class="meta-pill meta-evidence">📌 Evidence: <b>{ev_str}</b></span>')
@@ -513,11 +519,8 @@ def render_assistant_content(text: str) -> None:
                 if badges:
                     st.markdown(f'<div class="meta-container">{" ".join(badges)}</div>', unsafe_allow_html=True)
 
-                # Pretty human reply box
-                st.markdown(
-                    f'<div class="assistant-reply-card">{reply}</div>',
-                    unsafe_allow_html=True,
-                )
+                # Render reply using native markdown for clean bullet points, bolding & spacing
+                st.markdown(reply)
 
                 # Collapsible raw JSON inspect
                 with st.expander("🔍 Xem chi tiết Raw JSON Response", expanded=False):
