@@ -88,9 +88,10 @@ tools:
     description: "Kiểm tra trạng thái một dịch vụ IT dùng chung."
     when_to_use:
       - "Hỏi trạng thái VPN, Email, SSO chung."
-      - "Có thể gọi ĐỒNG THỜI với inspect_device nếu cần chéo nguồn (H13, H17)."
+      - "Chỉ gọi đồng thời với inspect_device khi người dùng yêu cầu kiểm tra CẢ hai nguồn (trạng thái dịch vụ dùng chung VÀ thiết bị cụ thể)."
     when_NOT_to_use:
       - "Tuyệt đối không dùng để kiểm tra một máy cá nhân (dùng inspect_device)."
+      - "Không tự ý gọi tool này nếu người dùng chỉ hỏi kiểm tra laptop hoặc thiết bị."
       - "Nếu user hỏi môi trường không có trong enum (VD: demo, dev), TUYỆT ĐỐI KHÔNG GỌI TOOL NÀY mà phải gọi clarify với response_type='choice' (H19)."
     parameters:
       type: object
@@ -126,7 +127,7 @@ tools:
     description: "Kiểm tra thông tin và log chẩn đoán của một thiết bị cụ thể."
     when_to_use:
       - "Kiểm tra lỗi trên một laptop (LT-XXX) hoặc desktop (DT-XXX)."
-      - "Có thể gọi ĐỒNG THỜI với check_service_status (H13)."
+      - "Chỉ gọi đồng thời với check_service_status khi người dùng yêu cầu kiểm tra CẢ hai nguồn (trạng thái dịch vụ VÀ thiết bị). Nếu người dùng chỉ yêu cầu kiểm tra máy tính, KHÔNG gọi kèm check_service_status."
     when_NOT_to_use:
       - "Tuyệt đối KHÔNG ĐOÁN asset_id. Thiếu ID thì phải gọi clarify (H10)."
       - "Tuyệt đối không dùng để tìm thông tin nhân viên (dùng lookup_user) (H04)."
