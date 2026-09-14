@@ -126,7 +126,8 @@ Phân tích tính an toàn ranh giới của các công cụ mở rộng.
 |---|---|---|---|
 | Optional built-in | `runs/v1_B_base_openrouter_20260914T192737760898.json` | `policy` tra cứu đúng quy định IT. | Không làm theo instruction độc hại nhúng trong tài liệu. |
 | External search + privacy boundary | `runs/v1_B_base_openrouter_20260914T192737760898.json` | `search_device_info` chỉ nhận tên model công khai. | Chặn gửi Asset ID / Employee ID / Hostname ra web search. |
-| Bonus: tool mới do nhóm tự xây |  |  |  |
+| Bonus: tool mới do nhóm tự xây | `transcripts/v0_openrouter_20260914T191208821549.transcript.json` | `check_ticket_status` tra cứu đúng tiến độ ticket INC-1042 từ mock/local store. | Read-only tool, không gây side-effect ghi đè dữ liệu, kiểm tra hợp lệ ticket_id. |
+
 
 ## B6. Safety review
 
@@ -226,12 +227,20 @@ Sao chép mẫu dưới đây cho từng thành viên:
 
 - **Vai trò/phần việc được nhận:** UI & Bonus Capability Developer
 - **Những gì tôi đã thay đổi trong repo chung:**
-- **File hoặc artifact liên quan:**
-- **Commit hash hoặc pull request:**
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:**
-- **Khó khăn tôi gặp và cách tôi xử lý:**
-- **Điều tôi học được từ phần việc này:**
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:**
+  - Thiết kế và hoàn thiện giao diện chat trực quan `app.py` với phong cách Modern Dark Mode SaaS (Glassmorphism), độ tương phản cao, sử dụng font *Plus Jakarta Sans* và *JetBrains Mono*.
+  - Tái sử dụng trực tiếp hàm chuẩn `run_model_tool_loop` từ `chat.py` để đồng bộ hành vi tuyệt đối giữa CLI và Web UI.
+  - Tích hợp tính năng Live Transcripts thời gian thực, lưu trữ đầy đủ tool rounds, arguments, kết quả và mã băm SHA256 (`prompt_hash`, `tools_hash`), hỗ trợ nút tải JSON trực tiếp ở sidebar.
+  - Thêm hàng Quick Action Chips (tác vụ 1 chạm) cho các kịch bản kiểm thử phổ biến (VPN, Ticket, Device, BYOD, Outlook).
+  - Bóc tách phản hồi JSON contract của Agent thành giao diện thân thiện với các badge metadata (`Intent`, `Action`, `Evidence`), định dạng Markdown chuẩn xác và khối mở rộng kiểm tra Raw JSON.
+  - Xây dựng hoàn chỉnh Bonus Tool `check_ticket_status` (mã nguồn `tools/check_ticket_status/tool.py`, tài liệu `TOOL.md`, mock data `helpdesk_data/tickets.json`, khai báo trong `artifacts/tools.yaml` và đăng ký trong `tools/__init__.py`).
+- **File hoặc artifact liên quan:** `starter_v0/app.py`, `starter_v0/.streamlit/config.toml`, `starter_v0/tools/check_ticket_status/tool.py`, `starter_v0/tools/check_ticket_status/TOOL.md`, `starter_v0/tools/check_ticket_status/__init__.py`, `starter_v0/helpdesk_data/tickets.json`, `starter_v0/tools/__init__.py`, `starter_v0/artifacts/tools.yaml`, `starter_v0/transcripts/`.
+- **Commit hash hoặc pull request:** Nhánh `contrib/ducquan19` (Commits: `ecac9c4`, `d2372d7`, `08806a9`).
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Quyết định tái sử dụng trực tiếp hàm chuẩn `run_model_tool_loop` từ `chat.py` thay vì viết riêng luồng suy luận cho UI. Quyết định này đảm bảo tính nhất quán tuyệt đối (strict consistency) giữa kết quả benchmark tự động và trải nghiệm thực tế của người dùng; mọi thay đổi về prompt v0/v1/v2/v3 hay ràng buộc tool schema đều có hiệu lực tức thì trên Web UI mà không cần sửa code giao diện.
+- **Khó khăn tôi gặp và cách tôi xử lý:** 
+  1. Lỗi render Markdown bẹp dòng: Ban đầu bọc chuỗi `reply` trong thẻ HTML `<div>` khiến parser coi là HTML thô, dẫn đến toàn bộ gạch đầu dòng `\n- ` và in đậm `**` bị dồn thành một hàng duy nhất. Tôi đã xử lý bằng cách chuyển sang render native bằng `st.markdown(reply)`.
+  2. Lỗi Model đôi khi trả về `evidence_ids: []` dù đã gọi đúng tool: Tôi đã bổ sung lớp Regex Fallback tự động phát hiện mã sự cố/tài sản (`INC-`, `REQ-`, `LT-`, `DT-`, `POL-`) trong văn bản để luôn hiển thị badge Evidence dẫn chứng trực quan trên giao diện.
+- **Điều tôi học được từ phần việc này:** Hiểu rõ cách xây dựng giao diện quan sát (Observability UI) cho Agent: không chỉ là khung chat đơn thuần mà cần trực quan hóa rõ ràng từng bước suy luận, các vòng lặp tool execution (Rounds), tham số gọi vào và kết quả trả ra để phục vụ việc kiểm thử, giám sát và audit an toàn.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Bổ sung cơ chế Stream token (SSE/WebSocket) để câu trả lời của trợ lý hiển thị mượt mà theo thời gian thực thay vì đợi chạy hết toàn bộ tool rounds, và phát triển thêm tính năng so sánh trực quan đa phiên bản (A/B testing) giữa các artifact version ngay trên màn hình.
 
 Mỗi thành viên phải tự commit phần self-reflection của mình bằng Git identity
 tương ứng. Reflection phải dẫn đến contribution artifact/commit đã nêu ở trên,
