@@ -1,1 +1,2 @@
 version,author,changed_artifact,artifact_version,prompt_hash,tools_hash,reason,hypothesis,metric_name,metric_before,metric_after,run_file
+v0,TV 3,artifact khởi đầu chưa chỉnh sửa,v0+p27467914bc4d+t86e19195220e,27467914bc4d93574eb1a418b77247c51682e04401c78fb4445c22b9019185a0,86e19195220e2c3deba00196baa9d00bd06380b4317f92a4b5c6a302ff616bdb,Thiết lập baseline không sửa artifact,Starter cố ý chưa hoàn chỉnh và là mốc so sánh hợp lệ cho các phiên bản sau,case_accuracy,,0.7000,runs/v0_B_base_openrouter_20260914T182501927883.json

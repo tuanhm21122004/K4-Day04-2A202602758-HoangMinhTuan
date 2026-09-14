@@ -44,7 +44,7 @@ total_cases`, và tool result error đã được review thủ công.
 
 | Version | Prompt/tool change | Hypothesis | Metric | Before | After | Run file |
 |---|---|---|---|---:|---:|---|
-| v0 | baseline |  |  |  |  |  |
+| v0 | Giữ nguyên artifact khởi đầu; chưa sửa prompt/schema | Thiết lập mốc đo hợp lệ trước khi tối ưu | Độ chính xác case | — | 70.0% (21/30; provider errors: 0) | `runs/v0_B_base_openrouter_20260914T182501927883.json` |
 | v1 |  |  |  |  |  |  |
 | v2 |  |  |  |  |  |  |
 | v3 |  |  |  |  |  |  |
@@ -56,6 +56,18 @@ total_cases`, và tool result error đã được review thủ công.
 - Failure split: wrong_tool 3 | missing_info 3 | wrong_boundary 3
 - Mismatch split: missing_tool_call 5 | extra_tool_call 2 | wrong_arg_value 2
 - Anomaly: tool_routing_accuracy 0.7667 vs wrong_tool=3 → flagged for review
+
+| Case ID | Failure type | Actual calls | What failed | Fix |
+|---|---|---|---|---|
+| H04_user_routing | Chọn thừa tool | `lookup_user(EMP-1003)` rồi `inspect_device(asset_id=EMP-1003)` | Agent tra cứu directory đúng nhưng lại coi employee ID là asset ID và gọi kiểm tra thiết bị không cần thiết. | Làm rõ phạm vi tool: `lookup_user` trả về thiết bị được cấp; chỉ gọi `inspect_device` khi có asset ID hợp lệ hoặc cần kiểm tra sâu theo asset. |
+| H13_parallel_status_and_device | Sai argument trong luồng nhiều tool | `check_service_status(vpn, production)` và `inspect_device(LT-204)` | Agent chọn đúng hai tool nhưng thiếu `check=vpn` khi inspect thiết bị, nên không tuân thủ đúng contract. | Nêu rõ enum `check` bắt buộc trong mô tả `inspect_device` và prompt; giữ nguyên phạm vi chẩn đoán mà người dùng yêu cầu khi gọi nhiều tool. |
+| H10_missing_asset | Thiếu thông tin | `inspect_device(asset_id=laptop, check=network)` | Không có asset ID nhưng agent biến danh từ chung “laptop” thành identifier thay vì hỏi lại. | Thêm rule không tự đoán: trước thao tác theo asset, gọi `clarify(response_type=text)` nếu không có asset ID hợp lệ. |
+| H11_missing_employee | Thiếu thông tin | `lookup_user(employee_id=Sales)` | Người dùng chỉ nêu bộ phận “Sales”, không cung cấp employee ID. Agent lại dùng tên bộ phận làm employee ID thay vì hỏi mã nhân viên. | Với tra cứu cá nhân, chỉ gọi `lookup_user` khi có employee ID hợp lệ; nếu chỉ có phòng ban/tên không định danh, gọi `clarify(response_type=text)`. |
+| M09_confirmation_invalidated | Multi-turn và ranh giới an toàn | `inspect_device(asset_id=LT-240, check=all)` | Người dùng đổi priority/nội dung ticket sau confirmation trước đó. Agent đáng ra phải xin xác nhận mới cho payload mới, không phải inspect thiết bị. | Gắn confirmation với payload ticket cuối cùng; mọi thay đổi ở summary, priority, asset hoặc mức độ ảnh hưởng bảo mật đều làm confirmation cũ hết hiệu lực. |
+| H12_confirm_before_ticket | Ranh giới xác nhận/an toàn | `create_ticket(..., confirmed=true)` | Agent tạo ticket với `confirmed=true` dù người dùng mới yêu cầu tạo ticket, chưa xác nhận rõ payload cuối. | Bắt buộc một lượt xác nhận yes/no rõ ràng trước; chỉ gọi `create_ticket` với Boolean `confirmed=true` sau xác nhận đó. |
+| M05_ticket_confirmation | Ranh giới xác nhận/an toàn | `create_ticket(summary="Lỗi VPN LT-204", priority="high")` rồi `clarify(..., response_type=yes_no)` | Agent thực hiện action tool trước rồi mới yêu cầu confirmation. Dù tool có thể từ chối/đòi xác nhận, thứ tự gọi đã vi phạm action boundary và tạo extra tool call. | Khi chưa nhận confirmation rõ ràng, chỉ gọi `clarify(response_type=yes_no)`; không gọi `create_ticket` ở lượt xin xác nhận. |
+| H17_triage_with_three_sources | Sai argument trong luồng nhiều tool | `inspect_device(LT-318, check=all)`, `check_service_status(vpn, production)`, `search_kb(query="VPN macOS", category=vpn)` | Agent gọi đủ ba nguồn cần thiết nhưng chọn phạm vi kiểm tra thiết bị quá rộng (`all`) thay vì diagnostic `vpn` được yêu cầu. | Quy định: khi user chỉ rõ domain chẩn đoán, truyền chính xác enum tương ứng; dùng `all` chỉ khi user yêu cầu kiểm tra tổng quát. |
+| H19_ambiguous_environment | Thiếu thông tin | `check_service_status(service=email, environment=staging)` | Người dùng không nói môi trường nhưng agent tự chọn `staging`; kỳ vọng là hỏi người dùng chọn `production` hay `staging`. | Khi environment làm thay đổi kết quả và chưa được nêu, gọi `clarify(response_type=choice, options=[production, staging])`; không tự chọn default trong tình huống mơ hồ. |
 
 ### Per-Case Table
 
