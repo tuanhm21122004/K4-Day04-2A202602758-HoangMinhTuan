@@ -177,13 +177,13 @@ Sao chép mẫu dưới đây cho từng thành viên:
 ### Nguyễn Phi Nhật — 2A202602658 (Vai trò 4)
 
 - **Vai trò/phần việc được nhận:** Security, Adversarial & QA Lead
-- **Những gì tôi đã thay đổi trong repo chung:**
-- **File hoặc artifact liên quan:**
-- **Commit hash hoặc pull request:**
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:**
-- **Khó khăn tôi gặp và cách tôi xử lý:**
-- **Điều tôi học được từ phần việc này:**
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:**
+- **Những gì tôi đã thay đổi trong repo chung:** Thực thi bộ kiểm thử an toàn Red-team (`eval_adversarial.json`), phân tích 3 kịch bản tấn công điển hình (B4a), hoàn thiện đánh giá ranh giới an toàn Safety Review (B6) và rà soát vệ sinh an toàn secret/ticket rác trước khi submit.
+- **File hoặc artifact liên quan:** `starter_v0/data/eval_adversarial.json`, `starter_v0/runs/v0_B_base_openrouter_20260914T183251711529.json`, `starter_v0/artifacts/REPORT.md`.
+- **Commit hash hoặc pull request:** Nhánh `nhatn` (Commit: `b57cfec`).
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Quyết định đo lường thủ công cả `tool_results` lẫn hệ thống file thay vì chỉ nhìn vào điểm automatic grader, nhờ đó phát hiện ra ở v0 dù grader PASS nhưng Agent vẫn tự động phát sinh file ticket rác chứa thông tin nhạy cảm vào ổ đĩa.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Khó khăn khi Agent bị lừa bởi pseudo-code có tham số `confirmed: true` hoặc JSON kết quả giả từ user. Đã xử lý bằng cách phân tích trace lỗi và tư vấn cho TV1 bổ sung quy tắc cấm tin JSON user vào `system_prompt.md`.
+- **Điều tôi học được từ phần việc này:** Hiểu rõ tầm quan trọng của Guardrails và ranh giới an toàn (Safety Boundary) đối với Agent trong thực tế, không để dữ liệu nội bộ bị lọt ra ngoài Web Search.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Viết thêm các kịch bản Red-team phức tạp hơn về Prompt Injection nhiều lượt (multi-turn role spoofing).
 
 ### Trần Đức Quân — 2A202602922 (Vai trò 5)
 
