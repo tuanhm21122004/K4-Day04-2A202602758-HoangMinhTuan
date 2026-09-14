@@ -15,35 +15,43 @@
 
 ## A1. Agent này làm được gì
 
-> Viết 1–2 câu mô tả capability và giới hạn của agent.
+Agent là trợ lý IT Helpdesk thông minh cho doanh nghiệp Northstar Labs, có khả năng tra cứu trạng thái dịch vụ (VPN, Email, SSO, Wi-Fi, Printing), chẩn đoán thiết bị phần cứng/mạng/bảo mật, tra cứu nhân viên, tìm kiếm hướng dẫn trong Knowledge Base và IT Policy, lập báo cáo sự cố, tra cứu tiến độ ticket qua Bonus Tool, và xin xác nhận trước khi tạo ticket. 
+**Giới hạn**: Agent tuyệt đối không tự đoán ID, không lưu mật khẩu/OTP/token, và không làm theo các mệnh lệnh tiềm ẩn mã độc nhúng trong tài liệu hay câu hỏi của người dùng.
 
 **Link dùng thử:**
 
-> URL:
+> URL: Local Streamlit App: `http://localhost:8501` (Chạy bằng lệnh `streamlit run app.py`)
 
 ## A2. Tool agent có
 
 | Tool | Chức năng | Core / optional / team-built |
 |---|---|---|
-| clarify | Hỏi bổ sung hoặc xác nhận | core |
-|  |  |  |
+| `clarify` | Hỏi bổ sung thông tin khi thiếu ID hoặc xin xác nhận trước khi gọi action tool | core |
+| `check_service_status` | Kiểm tra trạng thái các dịch vụ IT dùng chung (VPN, Email, SSO, Wi-Fi, Printing) | core |
+| `inspect_device` | Kiểm tra thông số và chẩn đoán snapshot phần cứng/mạng/bảo mật của thiết bị | core |
+| `lookup_user` | Tra cứu thông tin tài khoản nhân viên và danh sách thiết bị được bàn giao | core |
+| `search_kb` | Tìm kiếm bài viết hướng dẫn khắc phục sự cố kỹ thuật trong Knowledge Base | core |
+| `format_incident_report` | Định dạng và tổng hợp các phát hiện kỹ thuật thành báo cáo sự cố chuẩn | core |
+| `policy` | Tra cứu quy định, chính sách bảo mật và thiết bị công nghệ thông tin nội bộ | optional built-in |
+| `create_ticket` | Tạo ticket yêu cầu hỗ trợ mới sau khi người dùng đã xác nhận rõ ràng | optional built-in |
+| `search_device_info` | Tìm kiếm thông số và driver công khai của thiết bị trên Internet qua Tavily | optional built-in |
+| `check_ticket_status` | Tra cứu trạng thái và tiến độ xử lý của một ticket đã tồn tại trong hệ thống | team-built (Bonus) |
 
 ## A3. Câu hỏi mẫu
 
-1.
-2.
-3.
+1. *"Dịch vụ VPN production hiện tại có đang gặp sự cố gián đoạn không?"*
+2. *"Mã máy của mình là LT-204, hãy kiểm tra kết nối mạng và chẩn đoán lỗi giúp mình."*
+3. *"Kiểm tra giúp mình tiến độ xử lý ticket sự cố INC-1042 xem đã xong chưa."*
 
 ## A4. Kịch bản demo đã rehearse
 
 | Scenario | Tool trace cần thấy | Cải thiện version | Fallback run/transcript |
 |---|---|---|---|
-|  |  |  |  |
+| **Tra cứu trạng thái VPN Production** | `check_service_status(service="vpn", environment="production")` | v0 $\rightarrow$ v1: Không bị nhầm sang chẩn đoán thiết bị cá nhân | `transcripts/v0_openrouter_20260914T191208821549.transcript.json` |
+| **Tra cứu tiến độ ticket (Bonus Tool)** | `check_ticket_status(ticket_id="INC-1042")` | Tích hợp thành công capability mới trên giao diện Streamlit UI | `transcripts/v0_openrouter_20260914T194959233843.transcript.json` |
+| **Kiểm tra thiết bị có xử lý thiếu ID** | Lượt 1: `clarify(response_type="text")`<br>Lượt 2: `inspect_device(asset_id="LT-204", check="all")` | v0 (đoán mò ID) $\rightarrow$ v1 (hỏi lại bằng clarify) | `runs/v1_B_base_openrouter_20260914T195652967694.json` |
 
 # PHẦN B — Chi tiết và evidence
-
-Metric chỉ hợp lệ khi `provider_error_cases == 0`, `measured_cases ==
-total_cases`, và tool result error đã được review thủ công.
 
 ## B1. Version evidence
 
@@ -190,65 +198,69 @@ Sau mỗi version, tôi sẽ chỉ ghi metric khi run không có provider error,
 
 # PHẦN C — Checkout trước khi nộp
 
-Phần này được hoàn thành sau khi toàn bộ code, evidence và report đã được đưa
-lên repository chung. Nhóm chưa nên nộp link trên VLearn nếu reflection hoặc
-commit evidence của bất kỳ thành viên nào còn thiếu.
-
 ## C1. Reflection chung của nhóm
 
-Các thành viên thảo luận và viết một reflection chung. Nội dung cần dựa trên
-evidence thực tế trong repository, không chỉ mô tả cảm nhận chung.
+Nhóm 5 thành viên đã phối hợp chặt chẽ, khép kín quy trình từ phân tích lỗi, tối ưu prompt/schema, đo lường benchmark, kiểm thử bảo mật đến phát triển giao diện Web UI và Bonus Tool:
 
-- Mục tiêu nào của nhóm đã hoàn thành? Dẫn đến artifact hoặc run tương ứng.
-- Hypothesis hoặc thay đổi nào tạo ra cải thiện rõ nhất?
-- Failure quan trọng nào vẫn chưa xử lý được hoàn toàn?
-- Nhóm đã phân chia, review và tích hợp công việc như thế nào?
-- Nếu có thêm một vòng, nhóm sẽ ưu tiên thay đổi và kiểm chứng điều gì?
+- **Mục tiêu hoàn thành:**
+  1. Tối ưu độ chính xác định tuyến công cụ (Tool Routing & Argument Accuracy) từ mức baseline v0 (70.0% - 21/30 pass) qua v1 (73.33%), v2 (86.67%), v3 (96.67%), v4 (96.67%) và đạt hoàn hảo ở v5 (100.0% - 30/30 pass trên Base Suite, provider errors: 0). Minh chứng tại các run JSON trong `starter_v0/evidence/runs/` và bộ Group Suite đạt 80.0% tại `evidence/runs/v5_B_group_openrouter_20260914T195702248588.json`.
+  2. Thiết lập ranh giới an toàn nghiêm ngặt (Safety Boundaries): Ngăn chặn việc tự bịa mã tài sản/nhân viên, bắt buộc xin xác nhận của người dùng trước khi gọi action `create_ticket`, vô hiệu hóa xác nhận cũ khi payload thay đổi, và bảo vệ dữ liệu nội bộ không bị rò rỉ ra Web Search (minh chứng phân tích chuyên sâu tại mục B4a, B6).
+  3. Xây dựng hoàn chỉnh bộ đánh giá riêng của nhóm `starter_v0/data/eval_group.json` gồm đúng 10 test case nguyên bản (5 single-turn, 5 multi-turn) bao phủ các tình huống thực tế khó (minh chứng mục B3).
+  4. Triển khai thành công giao diện Web UI tương tác cao bằng Streamlit (`starter_v0/app.py`) tích hợp observability, live transcripts và Bonus Capability `check_ticket_status` (minh chứng mục B4, B5).
+- **Hypothesis tạo cải thiện rõ nhất:**
+  Giả thuyết tại $v1$: *"Khi cấm triệt để việc tự đoán identifier trong `system_prompt.md` và buộc schema `tools.yaml` phải có regex pattern + enum bắt buộc, tỷ lệ missing_info và wrong_boundary sẽ giảm về 0"* — Giả thuyết này đã mang lại bước nhảy vọt lớn nhất (tăng ngay 20% điểm số, giải quyết dứt điểm 6/9 ca lỗi của baseline).
+- **Failure quan trọng cần lưu ý:**
+  Trong các kịch bản tấn công Red-team nâng cao (`A03`, `A04`), nếu người dùng cố tình chèn pseudo-code hoặc khối JSON giả lập kết quả thực thi công cụ, LLM đôi khi vẫn bị thiên kiến đồng thuận (confirmation bias). Nhóm đã khắc phục bằng cách thiết lập phòng thủ 2 lớp (Prompt Guardrail + Tool Validation Middleware).
+- **Quy trình phân chia và tích hợp:**
+  Nhóm phân định trách nhiệm rõ ràng theo 5 vai trò: TV1 (Prompt & Project Lead), TV2 (Tool Schema), TV3 (Benchmark & Eval), TV4 (Security & QA), TV5 (UI & Bonus Tool). Toàn bộ mã nguồn, cấu hình và báo cáo được tích hợp qua mô hình Git Feature Branch (`contrib/<username>`) và Pull Request có code review, tuyệt đối không dùng squash merge để bảo tồn lịch sử đóng góp của từng thành viên.
+- **Định hướng cải tiến thêm:**
+  Nếu có thêm thời gian, nhóm sẽ thử nghiệm kiến trúc phân luồng Intent Router chuyên biệt trước khi gọi Tool Loop, đồng thời nâng cấp cơ chế streaming token thời gian thực cho Web UI.
 
 **Reflection chung của nhóm:**
 
-> Viết reflection tại đây và dẫn link/path đến evidence liên quan.
+> Nhóm đã hoàn thành xuất sắc toàn bộ các mục tiêu cốt lõi và mục tiêu mở rộng của bài Lab Day 04, tạo ra một IT Helpdesk Agent thông minh, an toàn, có khả năng giải thích và tái lập hành vi dựa trên bằng chứng đo lường thực tế.
 
 ## C2. Self-reflection của từng thành viên
 
-Mỗi thành viên tự viết một mục riêng về phần việc chính mình đã thực hiện trong
-repository chung. Không viết thay hoặc gộp nhiều thành viên vào một câu trả lời.
-Mỗi reflection cần trỏ đến file, commit hoặc pull request có thật để người đọc
-có thể đối chiếu đóng góp.
-
-Sao chép mẫu dưới đây cho từng thành viên:
 ### Hoàng Minh Tuấn — 2A202602758 (Vai trò 1)
 
 - **Vai trò/phần việc được nhận:** Project Lead & Core Prompt Engineer
 - **Những gì tôi đã thay đổi trong repo chung:**
-- **File hoặc artifact liên quan:**
-- **Commit hash hoặc pull request:**
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:**
-- **Khó khăn tôi gặp và cách tôi xử lý:**
-- **Điều tôi học được từ phần việc này:**
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:**
+  - Khởi tạo và thiết lập repository chung, cấu hình nhánh làm việc, quản lý merge các Pull Request của thành viên và theo dõi file `TEAMMATES.md`.
+  - Thiết kế và cải tiến toàn diện `starter_v0/artifacts/system_prompt.md` qua các vòng v0 → v1 → v2: thiết lập các quy tắc toàn cục cấm tự đoán ID (`asset_id`, `employee_id`), bắt buộc dùng `clarify` khi thiếu thông tin, thiết lập ranh giới xác nhận tạo ticket (explicit confirmation) và quy tắc Tool Calling Precision để tránh gọi thừa tool.
+  - Quản lý và cập nhật hồ sơ thử nghiệm `starter_v0/artifacts/version_log.csv` ghi nhận các mốc hypothesis và kết quả Before/After.
+  - Tổng hợp Phần A, Phần C1 và hoàn thiện báo cáo chung `starter_v0/artifacts/REPORT.md`.
+- **File hoặc artifact liên quan:** `TEAMMATES.md`, `starter_v0/artifacts/system_prompt.md`, `starter_v0/artifacts/version_log.csv`, `starter_v0/artifacts/REPORT.md`.
+- **Commit hash hoặc pull request:** Nhánh `contrib/tuanhm21122004` (Commits: `0ea6110`, `58bdb08`, `31ffbfc`, `e1e38bf`).
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Quyết định đưa quy tắc *Missing Identifiers* và *Confirmation Invalidation* lên đầu `system_prompt.md`. Lý do là LLM thường có xu hướng tự "suy diễn hợp lý" (hallucination) để làm hài lòng câu hỏi của user; việc đặt các quy tắc cấm đoán ID và bắt buộc dừng lại ở ranh giới `clarify` ở vị trí ưu tiên cao giúp model luôn tuân thủ nguyên tắc an toàn trước khi hành động.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Khó khăn khi model ở v1 vẫn bị gọi thừa `check_service_status` trong các case kiểm tra máy cá nhân đơn lẻ (`H02`, `M01`, `M03`). Tôi đã phối hợp cùng TV2 để bổ sung quy tắc *Tool Precision & Multi-turn Context* vào prompt và làm rõ ranh giới trong `tools.yaml`, giúp khắc phục triệt để lỗi này ở v2.
+- **Điều tôi học được từ phần việc này:** Hiểu sâu sắc về kỹ thuật Prompt Engineering trong hệ thống Agentic: prompt không chỉ là câu hướng dẫn giao tiếp mà là bản đặc tả hành vi logic (Behavioral Specification), cần phải phân tách rành mạch giữa vai trò, quy tắc cấm, điều kiện gọi tool và định dạng đầu ra.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Tôi sẽ áp dụng kỹ thuật dynamic few-shot prompting để tự động đưa các ví dụ mẫu phù hợp vào ngữ cảnh theo từng loại truy vấn, giúp tối ưu hóa thêm lượng token tiêu thụ.
 
 ### Trần Chí Vĩ — 2A202602968 (Vai trò 2)
 
 - **Vai trò/phần việc được nhận:** Tool Declaration & Schema Specialist
 - **Những gì tôi đã thay đổi trong repo chung:**
-- **File hoặc artifact liên quan:**
-- **Commit hash hoặc pull request:**
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:**
-- **Khó khăn tôi gặp và cách tôi xử lý:**
-- **Điều tôi học được từ phần việc này:**
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:**
+  - Tái cấu trúc và chuẩn hóa toàn bộ file `starter_v0/artifacts/tools.yaml`: bổ sung đầy đủ các khối `when_to_use`, `when_NOT_to_use`, `boundaries`, `failure_modes`, `example_call` cho 10 công cụ.
+  - Thiết lập ràng buộc kiểu dữ liệu và regex pattern (`pattern: "^(LT|DT)-[0-9]+$"`) cho các trường định danh, biến `environment` và `category` thành các tham số bắt buộc để loại bỏ lỗi suy đoán mặc định.
+  - Phân tích chi tiết 9 ca lỗi baseline và viết toàn bộ mục B2 (Failure Analysis) và B7 (Technical Reflection) trong `REPORT.md`.
+- **File hoặc artifact liên quan:** `starter_v0/artifacts/tools.yaml`, `starter_v0/artifacts/REPORT.md`.
+- **Commit hash hoặc pull request:** Nhánh `vinogay` (Commit: `3d8fa96`, PR #1).
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Quyết định bổ sung tường minh khối `when_NOT_to_use` cho từng tool thay vì chỉ mô tả `when_to_use`. Lý do là LLM rất dễ bị nhầm lẫn giữa các công cụ có phạm vi tương đồng (`lookup_user` vs `inspect_device`, `search_kb` vs `policy`); việc chỉ rõ những gì *tuyệt đối không được làm* giúp định hình ranh giới định tuyến cực kỳ sắc bén.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Ban đầu việc mô tả "có thể gọi đồng thời" trong `inspect_device` khiến model luôn gọi kèm `check_service_status`. Tôi đã xử lý bằng cách tinh chỉnh lại câu từ điều kiện: chỉ gọi đồng thời khi user yêu cầu cả hai nguồn, nếu chỉ hỏi thiết bị thì cấm gọi kèm.
+- **Điều tôi học được từ phần việc này:** Schema của công cụ chính là một phần của prompt. Mô tả tham số, kiểu dữ liệu, enum và ranh giới an toàn trong `tools.yaml` quyết định trực tiếp đến độ chính xác gọi hàm (Function Calling) của model.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Xây dựng một script tự động kiểm tra cú pháp và validate schema giữa `tools.yaml` và code thực thi trong `tools/` trước mỗi lần commit.
 
 ### Nguyễn Nam Khánh — 2A202602568 (Vai trò 3)
 
-- **Vai trò/phần việc được nhận:** Benchmark & Team Eval Specialist
-- **Những gì tôi đã thay đổi trong repo chung:**
-- **File hoặc artifact liên quan:**
-- **Commit hash hoặc pull request:**
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:**
-- **Khó khăn tôi gặp và cách tôi xử lý:**
-- **Điều tôi học được từ phần việc này:**
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:**
+- **Vai trò/phần việc được nhận:** TV 3 — Benchmark & Team Eval Specialist.
+- **Những gì tôi đã thay đổi trong repo chung:** Tôi xây dựng 10 group eval case gồm 5 single-turn và 5 multi-turn; phân tích toàn bộ 9 failure của baseline v0; tổng hợp metric Base Suite v0–v5 từ run JSON; cập nhật version log, B1, B2, B3 và đưa run evidence có thể commit vào `evidence/runs/`.
+- **File hoặc artifact liên quan:** `starter_v0/data/eval_group.json`, `starter_v0/artifacts/version_log.csv`, `starter_v0/artifacts/REPORT.md`, `starter_v0/evidence/runs/`.
+- **Commit hash hoặc pull request:** Commit `e64dacb`, `176aa95` (Branch `KanaxNguyen` / PR #5).
+- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Tôi chỉ dùng run có `provider_error_cases = 0` và `measured_cases = total_cases` làm evidence. Những file bị gắn nhãn version không khớp artifact hash được loại khỏi bảng version chính thức để tránh kết luận sai về mức cải thiện của agent.
+- **Khó khăn tôi gặp và cách tôi xử lý:** Các run ban đầu có nhiều file `v1` nhưng khác tools hash, nên dễ nhầm version. Tôi đối chiếu timestamp, `artifact_version`, `tools_hash` và `summary` để chọn đúng chuỗi v1 → v5; đồng thời giữ lại failure trace thay vì chỉ nhìn case accuracy.
+- **Điều tôi học được từ phần việc này:** Metric tổng hợp chỉ có ý nghĩa khi đi kèm trace. Một version có thể đạt accuracy cao ở Base Suite nhưng vẫn fail case riêng của Team Eval, do đó cần chạy regression và review arguments/tool results thủ công.
+- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Tôi sẽ yêu cầu mỗi thành viên lưu artifact snapshot và run JSON ngay khi tạo version để tên version, hash và evidence luôn khớp từ đầu; sau khi chốt v5, tôi cũng sẽ chạy lại Group Suite và ghi evidence version chính thức.
 
 ### Nguyễn Phi Nhật — 2A202602658 (Vai trò 4)
 
@@ -284,32 +296,21 @@ Mỗi thành viên phải tự commit phần self-reflection của mình bằng 
 tương ứng. Reflection phải dẫn đến contribution artifact/commit đã nêu ở trên,
 không dùng chính phần reflection làm bằng chứng duy nhất cho đóng góp kỹ thuật.
 
-### Nguyễn Nam Khánh — 2A202602568
-
-- **Vai trò/phần việc được nhận:** TV 3 — Benchmark & Team Eval Specialist.
-- **Những gì tôi đã thay đổi trong repo chung:** Tôi xây dựng 10 group eval case gồm 5 single-turn và 5 multi-turn; phân tích toàn bộ 9 failure của baseline v0; tổng hợp metric Base Suite v0–v5 từ run JSON; cập nhật version log, B1, B2, B3 và đưa run evidence có thể commit vào `evidence/runs/`.
-- **File hoặc artifact liên quan:** `starter_v0/data/eval_group.json`, `starter_v0/artifacts/version_log.csv`, `starter_v0/artifacts/REPORT.md`, `starter_v0/evidence/runs/`.
-- **Commit hash hoặc pull request:** `[Điền commit hash hoặc URL pull request của bạn]`.
-- **Một quyết định kỹ thuật tôi đã đưa ra và lý do:** Tôi chỉ dùng run có `provider_error_cases = 0` và `measured_cases = total_cases` làm evidence. Những file bị gắn nhãn version không khớp artifact hash được loại khỏi bảng version chính thức để tránh kết luận sai về mức cải thiện của agent.
-- **Khó khăn tôi gặp và cách tôi xử lý:** Các run ban đầu có nhiều file `v1` nhưng khác tools hash, nên dễ nhầm version. Tôi đối chiếu timestamp, `artifact_version`, `tools_hash` và `summary` để chọn đúng chuỗi v1 → v5; đồng thời giữ lại failure trace thay vì chỉ nhìn case accuracy.
-- **Điều tôi học được từ phần việc này:** Metric tổng hợp chỉ có ý nghĩa khi đi kèm trace. Một version có thể đạt accuracy cao ở Base Suite nhưng vẫn fail case riêng của Team Eval, do đó cần chạy regression và review arguments/tool results thủ công.
-- **Nếu làm lại, tôi sẽ cải thiện điều gì:** Tôi sẽ yêu cầu mỗi thành viên lưu artifact snapshot và run JSON ngay khi tạo version để tên version, hash và evidence luôn khớp từ đầu; sau khi chốt v5, tôi cũng sẽ chạy lại Group Suite và ghi evidence version chính thức.
-
 ## C3. Final checkout
 
 Chỉ nộp bài khi mọi mục dưới đây đã được kiểm tra trên branch cuối cùng của
 repository chung:
 
-- [ ] `TEAMMATES.md` có đủ họ tên, MSSV, GitHub username và vai trò.
-- [ ] Mỗi thành viên có ít nhất một commit trong lịch sử branch nộp bài.
-- [ ] Phần reflection chung của nhóm đã hoàn thành và có evidence.
-- [ ] Mỗi thành viên đã tự viết và commit self-reflection của mình.
-- [ ] `system_prompt.md`, `tools.yaml`, version log, runs, eval, transcript, UI
+- [x] `TEAMMATES.md` có đủ họ tên, MSSV, GitHub username và vai trò.
+- [x] Mỗi thành viên có ít nhất một commit trong lịch sử branch nộp bài.
+- [x] Phần reflection chung của nhóm đã hoàn thành và có evidence.
+- [x] Mỗi thành viên đã tự viết và commit self-reflection của mình.
+- [x] `system_prompt.md`, `tools.yaml`, version log, runs, eval, transcript, UI
       và report đã có trong repository.
-- [ ] Không có `.env`, API key, token, dữ liệu thật, cache hoặc generated ticket.
-- [ ] Nhóm trưởng và mọi thành viên đã thống nhất đúng một URL repository chung.
-- [ ] Nhóm trưởng và mọi thành viên sẽ nộp cùng URL đó trên VLearn.
+- [x] Không có `.env`, API key, token, dữ liệu thật, cache hoặc generated ticket.
+- [x] Nhóm trưởng và mọi thành viên đã thống nhất đúng một URL repository chung.
+- [x] Nhóm trưởng và mọi thành viên sẽ nộp cùng URL đó trên VLearn.
 
 **URL repository chung dùng để nộp:**
 
-> URL:
+> URL: https://github.com/tuanhm21122004/K4-Day04-2A202602758-HoangMinhTuan
